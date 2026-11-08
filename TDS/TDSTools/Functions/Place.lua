@@ -31,17 +31,27 @@ function StackPosition(Position,SkipCheck)
     return Vector3.new(0,Position.Y - PositionY,0)
 end
 
+local PreviewParents = {
+    [PreviewHolder] = true,
+    [PreviewFolder] = true,
+    [PreviewErrorFolder] = true,
+}
+
 function DebugTower(Object, Color) --Rework in Future
     if not Object then return end
-    -- Bounded: a model without a HumanoidRootPart used to spin here forever,
-    -- which silently froze the scheduler task and every action behind it.
-    local Deadline = os.clock() + 10
-    while not (tonumber(Object.Name) and Object:FindFirstChild("HumanoidRootPart")) do
-        if os.clock() > Deadline then
-            ConsoleWarn(`DebugTower: "{Object.Name}" has no HumanoidRootPart, skipping tag`)
-            return
+    -- A preview hologram never gets a HumanoidRootPart -- only the server's
+    -- placed instance does. Waiting on a hologram used to spin here forever and
+    -- freeze the scheduler; waiting even a few seconds taxed every placement.
+    if not (tonumber(Object.Name) and Object:FindFirstChild("HumanoidRootPart")) then
+        if PreviewParents[Object.Parent] then return end
+        local Deadline = os.clock() + 3
+        while not (tonumber(Object.Name) and Object:FindFirstChild("HumanoidRootPart")) do
+            if os.clock() > Deadline then
+                ConsoleWarn(`DebugTower: "{Object.Name}" has no HumanoidRootPart, skipping tag`)
+                return
+            end
+            task.wait()
         end
-        task.wait()
     end
     local Color = Color or Color3.new(1, 0, 0)
     local HumanoidRootPart = Object:FindFirstChild("HumanoidRootPart")

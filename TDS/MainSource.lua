@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
-local MainVersion = "?v=place-preview-fix-20261108"
+local MainVersion = "?v=place-nopreview-wait-20261108"
 
 local OldTime = os.clock()
 
