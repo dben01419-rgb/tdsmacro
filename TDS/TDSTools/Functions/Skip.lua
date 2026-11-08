@@ -14,9 +14,9 @@ return function(self, p1)
     if not CheckPlace() then
         return
     end
+    local CompatRelease = BeginCompatAction(tableinfo)
     SetActionInfo("Skip","Total")
     task.spawn(function()
-        local CompatRelease = BeginCompatAction(tableinfo)
         local SkipCheck
         local VoteGUI = LocalPlayer.PlayerGui:WaitForChild("ReactOverridesVote"):WaitForChild("Frame") -- it is what it is
         if Wave == 0 then

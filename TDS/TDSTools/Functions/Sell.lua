@@ -15,11 +15,11 @@ return function(self, p1)
     if not CheckPlace() then
         return
     end
+    local CompatRelease = BeginCompatAction(tableinfo)
     for i = 1, #Tower do
         SetActionInfo("Sell","Total")
     end
     task.spawn(function()
-        local CompatRelease = BeginCompatAction(tableinfo)
         if not TimeWaveWait(Wave, Min, Sec, InWave, tableinfo["Debug"]) then
             CompatRelease()
             return

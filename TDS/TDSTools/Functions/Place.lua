@@ -160,6 +160,7 @@ return function(self, p1)
     if not CheckPlace() then
         return
     end
+    local CompatRelease = BeginCompatAction(tableinfo)
     prints(`Queue Place: {Tower} (Wave {Wave})`)
     SetActionInfo("Place","Total")
     _G.TowersContained.Index += 1
@@ -192,7 +193,6 @@ return function(self, p1)
     end
 
     task.spawn(function()
-        local CompatRelease = BeginCompatAction(tableinfo)
         if not (tableinfo.Compat or tableinfo.Wave == nil) and not TimeWaveWait(Wave, Min, Sec, InWave, tableinfo["Debug"]) then
             CompatRelease()
             print("Return")

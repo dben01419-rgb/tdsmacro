@@ -17,10 +17,10 @@ return function(self, p1)
     if not CheckPlace() then
         return
     end
+    local CompatRelease = BeginCompatAction(tableinfo)
     local CurrentCount = StratXLibrary.CurrentCount
     SetActionInfo("Upgrade","Total")
     task.spawn(function()
-        local CompatRelease = BeginCompatAction(tableinfo)
         local Untimed = tableinfo.Compat or tableinfo.Wave == nil
         local TimerCheck = Untimed or TimeWaveWait(Wave, Min, Sec, InWave, tableinfo["Debug"])
         if not TimerCheck then
