@@ -246,7 +246,7 @@ if FeatureConfig["StrategiesX"] then
         if getnamecallmethod() == 'HttpGet' then
             if Args[1] == "https://raw.githubusercontent.com/banbuskox/dfhtyxvzexrxgfdzgzfdvfdz/main/ckmhjvskfkmsStratFun2" then
                 appendlog("Hooked AutoStrat Main Library Using hookmetamethod")
-                Args[1] = "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua"
+                Args[1] = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/MainSource.lua"
             elseif Args[1] == "https://raw.githubusercontent.com/banbuskox/dfhtyxvzexrxgfdzgzfdvfdz/main/asjhxnjfdStratFunJoin" then
                 appendlog("Hooked AutoStrat Joining Library Using hookmetamethod")
                 Args[1] = "https://raw.githubusercontent.com/Sigmanic/Strategies-X/main/CustomJoiningElevators.lua"
@@ -260,7 +260,7 @@ if FeatureConfig["StrategiesX"] then
     OldHook = hookfunction(game.HttpGet, function(Self, Url, ...)
         if Url == "https://raw.githubusercontent.com/banbuskox/dfhtyxvzexrxgfdzgzfdvfdz/main/ckmhjvskfkmsStratFun2" then
             appendlog("Hooked AutoStrat Main Library Using hookfunction")
-        Url = "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua"
+        Url = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/MainSource.lua"
         elseif Url == "https://raw.githubusercontent.com/banbuskox/dfhtyxvzexrxgfdzgzfdvfdz/main/asjhxnjfdStratFunJoin" then
             appendlog("Hooked AutoStrat Joining Library Using hookfunction")
             Url = "https://raw.githubusercontent.com/Sigmanic/Strategies-X/main/CustomJoiningElevators.lua"
@@ -359,7 +359,7 @@ end
 local LoadStrat = {}
 local ErrorFile = {}
 appendlog("Loaded File:")
-local StrategyCompat = loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/TDSTools/StrategyCompat.lua?v=9e99499", true))()
+local StrategyCompat = loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/TDSTools/StrategyCompat.lua?v=9e99499", true))()
 for i,v in next,GetFilesName("StratLoader") do
     local strat = GetFilePath("StratLoader",v)
     if strat and isfile(strat) then
@@ -368,7 +368,7 @@ for i,v in next,GetFilesName("StratLoader") do
         -- Compile through the compatibility transformer so strategies using
         -- `-- [ Wave N ] --` headers and short-form calls work unchanged.
         local source = readfile(strat)
-        local UnifiedMainSource = "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua?v=place-preview-fix-20261108"
+        local UnifiedMainSource = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/MainSource.lua?v=place-preview-fix-20261108"
         source = source:gsub("ttps://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/weanyuan/Strategies%-X%-Rebron/[^\"']+TDS/MainSource%.lua", UnifiedMainSource)
@@ -822,7 +822,7 @@ if not (Config[game:GetService("Players").LocalPlayer.Name] and Config[game:GetS
                 return
             end
             w["object"].Parent.Parent:Destroy()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/DevTest.lua", true))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/DevTest.lua", true))()
         end
     end)
 
@@ -839,7 +839,7 @@ if not (Config[game:GetService("Players").LocalPlayer.Name] and Config[game:GetS
     end)
     w:Button("Re-Execute",function()
         w["object"].Parent.Parent:Destroy()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/DevTest.lua", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/DevTest.lua", true))()
     end)
     w:Button("Delete Gui",function()
         w["object"].Parent.Parent:Destroy()

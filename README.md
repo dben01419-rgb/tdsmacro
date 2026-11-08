@@ -8,7 +8,7 @@ Strategies X is a TDS strategy runner with compatibility support for the common 
 getgenv().Gatlify = false
 
 local TDS = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua",
+    "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/MainSource.lua",
     true
 ))()
 ```
