@@ -150,7 +150,7 @@ return function(self, p1)
                 end
                 prints(`Using MatchMaking To Teleport To Special GameMode: {SpecialTable.mode}`)
                 return
-            elseif UtilitiesConfig.PreferMatchmaking or Workspace:GetAttribute("IsPrivateServer") or game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 10518590) then
+            elseif UtilitiesConfig.PreferMatchmaking or StratXLibrary.ForceMatchmaking or Workspace:GetAttribute("IsPrivateServer") or game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 10518590) then
                 UI.JoiningStatus.Text = `Matchmaking Enabled. Checking Loadout`
                 local Strat
                 local MapProps
@@ -173,6 +173,17 @@ return function(self, p1)
                     ["Fallen"] = "Fallen",
                 }
                 local DifficultyName = Strat.Mode.Lists[1] and DiffTable[Strat.Mode.Lists[1].Name]
+                -- "Hardcore Easy" is a mode + difficulty pair.  The start
+                -- payload wants the difficulty alone, otherwise the key is nil
+                -- and the server starts the match with no modifier selection.
+                if not DifficultyName and Strat.Mode and Strat.Mode.Lists[1] then
+                    local ModeName = tostring(Strat.Mode.Lists[1].Name or "")
+                    local DifficultyKey = (ModeName:gsub("^%s*[Hh]ardcore%s+", ""))
+                    DifficultyName = DiffTable[DifficultyKey] or DifficultyKey
+                    if DifficultyName == "" then
+                        DifficultyName = nil
+                    end
+                end
                 prints(`Selected Matchmaking Map: {MapProps.Map}`)
                 local LoadoutInfo = Strat.Loadout and Strat.Loadout.Lists[1]
                 if type(LoadoutInfo) == "table" and #LoadoutInfo > 0 then
@@ -190,12 +201,16 @@ return function(self, p1)
                     ["difficulty"] = DifficultyName,
                     ["map"] = MapProps.Map,
                 }
-                if MapProps.Modifiers then
+                if MapProps.Modifiers and next(MapProps.Modifiers) then
                     MatchOptions.Mods = MapProps.Modifiers
                     MatchOptions.modifiers = MapProps.Modifiers
                     prints("Voting Modifiers: ", MapProps.Modifiers)
                 end
-                RemoteFunction:InvokeServer("Multiplayer","v2:start",MatchOptions)
+                prints(`Matchmaking Start Payload: {game:GetService("HttpService"):JSONEncode(MatchOptions)}`)
+                local StartOk, StartResult = pcall(function()
+                    return RemoteFunction:InvokeServer("Multiplayer","v2:start",MatchOptions)
+                end)
+                prints(`v2:start -> ok={tostring(StartOk)} result={tostring(StartResult)}`)
                 prints("Teleporting To Matchmaking Place")
                 return
             end

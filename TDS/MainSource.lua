@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
-local MainVersion = "?v=place-nopreview-wait-20261108"
+local MainVersion = "?v=modifier-vote-20261108"
 
 local OldTime = os.clock()
 
@@ -427,7 +427,10 @@ function SaveUtilitiesConfig()
 		AutoSkip = UtilitiesTab.flags.AutoSkip,
 		UseTimeScale = UtilitiesTab.flags.UseTimeScale,
 		Gatlify = UtilitiesTab.flags.Gatlify,
-		PreferMatchmaking = UtilitiesTab.flags.PreferMatchmaking,
+		-- A strategy that asks for modifiers forces matchmaking.  This loop
+		-- rebuilds the config from the UI every 0.7s, so without the `or` it
+		-- erased the request before Map.lua ever read it.
+		PreferMatchmaking = UtilitiesTab.flags.PreferMatchmaking or StratXLibrary.ForceMatchmaking,
 		Webhook = {
 			WebhookEnabled = Webhook.flags.WebhookEnabled or false,
 			UseNewFormat = Webhook.flags.UseNewFormat or false,
@@ -1600,9 +1603,15 @@ function Strat.new()
 		local mapInfo = self.Map.Lists[#self.Map.Lists]
 		mapInfo.Modifiers = modifiers or {}
 		if type(modifiers) == "table" and next(modifiers) then
-			-- Modifier selection is only available through the match-start
+			-- Modifier selection is only available through the matchmaking
 			-- flow, not the ordinary map elevator flow.
+			StratXLibrary.ForceMatchmaking = true
 			UtilitiesConfig.PreferMatchmaking = true
+			local tab = UI and UI.UtilitiesTab
+			if tab and type(tab.flags) == "table" then
+				tab.flags.PreferMatchmaking = true
+			end
+			prints(`Modifiers Requested: {table.concat(modifiers, ", ")}`)
 		end
 		StratXLibrary.CompatibilityConfig.GameInfo = mapInfo
 	end
@@ -1677,7 +1686,7 @@ task.spawn(function()
 
 	local IntermissionButtons = LocalPlayer.PlayerGui:WaitForChild("ReactGameIntermission"):WaitForChild("Frame"):WaitForChild("buttons")
 	local currentVeto = IntermissionButtons:WaitForChild("veto"):WaitForChild("value")
-	if UtilitiesConfig.PreferMatchmaking or currentVeto.Text ~= `Veto ({#Players:GetChildren()}/{#Players:GetChildren()})` or game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 10518590) then
+	if UtilitiesConfig.PreferMatchmaking or StratXLibrary.ForceMatchmaking or currentVeto.Text ~= `Veto ({#Players:GetChildren()}/{#Players:GetChildren()})` or game:GetService("MarketplaceService"):UserOwnsGamePassAsync(LocalPlayer.UserId, 10518590) then
 		prints("MatchMaking Enabled")
 		Functions.MatchMaking()
 	end
