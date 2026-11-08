@@ -32,7 +32,17 @@ function StackPosition(Position,SkipCheck)
 end
 
 function DebugTower(Object, Color) --Rework in Future
-    repeat task.wait() until tonumber(Object.Name) and Object:FindFirstChild("HumanoidRootPart")
+    if not Object then return end
+    -- Bounded: a model without a HumanoidRootPart used to spin here forever,
+    -- which silently froze the scheduler task and every action behind it.
+    local Deadline = os.clock() + 10
+    while not (tonumber(Object.Name) and Object:FindFirstChild("HumanoidRootPart")) do
+        if os.clock() > Deadline then
+            ConsoleWarn(`DebugTower: "{Object.Name}" has no HumanoidRootPart, skipping tag`)
+            return
+        end
+        task.wait()
+    end
     local Color = Color or Color3.new(1, 0, 0)
     local HumanoidRootPart = Object:FindFirstChild("HumanoidRootPart")
     if HumanoidRootPart:FindFirstChild("BillboardGui") then
@@ -89,53 +99,92 @@ function PreviewInitial()
             task.wait()
         until ReplicatedStorage.Assets:FindFirstChild("Troops")
     end
+    local TroopsFolder = ReplicatedStorage.Assets:FindFirstChild("Troops")
     for i,v in next, GetTowersInfo() do
         if v.Equipped then
-            TowerProps[i] = v.Skin
-            local Tower = ReplicatedStorage.Assets.Troops[i].Skins[v.Skin]:Clone()
-            Tower.Parent = AssetsHologram
-            Tower.Name = i
-            for i2,v2 in next, Tower:GetDescendants() do
-                if v2:IsA("BasePart") then
-                    v2.Material = Enum.Material.ForceField
-                    if v2.CanCollide then
-                        v2.CanCollide = false
+            -- The loadout can be applied after the streaming pass that raises
+            -- AllowPlace, so a tower can appear here before its asset exists.
+            -- Indexing it blindly used to throw and take the Place task with it.
+            local Troop = TroopsFolder:FindFirstChild(i)
+            local Skin = Troop and Troop:FindFirstChild("Skins") and Troop.Skins:FindFirstChild(v.Skin)
+            if not Skin then
+                for _ = 1, 15 do
+                    Troop = Troop or TroopsFolder:FindFirstChild(i)
+                    Skin = Troop and Troop:FindFirstChild("Skins") and Troop.Skins:FindFirstChild(v.Skin)
+                    if Skin then break end
+                    pcall(function()
+                        RemoteEvent:FireServer("Streaming", "SelectTower", i, v.Skin)
+                    end)
+                    task.wait(1)
+                end
+            end
+            if Skin then
+                TowerProps[i] = v.Skin
+                local Tower = Skin:Clone()
+                Tower.Parent = AssetsHologram
+                Tower.Name = i
+                for i2,v2 in next, Tower:GetDescendants() do
+                    if v2:IsA("BasePart") then
+                        v2.Material = Enum.Material.ForceField
+                        if v2.CanCollide then
+                            v2.CanCollide = false
+                        end
                     end
                 end
-            end
-            local Tower = Tower:Clone()
-            for i2,v2 in next, Tower:GetDescendants() do
-                if v2:IsA("BasePart") then
-                    v2.Color = Color3.new(1, 0, 0)
+                local Tower = Tower:Clone()
+                for i2,v2 in next, Tower:GetDescendants() do
+                    if v2:IsA("BasePart") then
+                        v2.Color = Color3.new(1, 0, 0)
+                    end
                 end
+                Tower.Parent = AssetsError
+            else
+                ConsoleWarn(`PreviewInitial: "{i}" skin "{tostring(v.Skin)}" is not streamed`)
             end
-            Tower.Parent = AssetsError
         end
     end
 end
 
 function AddFakeTower(Name,Type)
-    if not TowerProps[Name] then
-        PreviewInitial()
-    end
     local Type = Type or "Normal"
+    if not TowerProps[Name] then
+        pcall(PreviewInitial)
+    end
     --local SkinName = SkinName or TowerProps[Name]
-    local Tower = if Type == "Normal" then AssetsHologram[Name] else AssetsError[Name] --ReplicatedStorage.Assets.Troops[Name].Skins[SkinName]
+    local Folder = if Type == "Normal" then AssetsHologram else AssetsError
+    local Tower = Folder:FindFirstChild(Name) --ReplicatedStorage.Assets.Troops[Name].Skins[SkinName]
+    if not Tower then
+        -- Refresh once, then wait. Returning nil here used to kill the caller.
+        for _ = 1, 10 do
+            pcall(PreviewInitial)
+            Tower = Folder:FindFirstChild(Name)
+            if Tower then break end
+            task.wait(1)
+        end
+    end
     if Tower then
         Tower = Tower:Clone()
         Tower.Parent = PreviewHolder --if Type == "Normal" then PreviewFolder else PreviewErrorFolder
         if Tower:FindFirstChild("AnimationController") then
             task.spawn(function()
-                local Success
-                repeat task.wait(.7)
-                    Success = pcall(function()
+                for _ = 1, 20 do
+                    task.wait(.7)
+                    local Success = pcall(function()
                         Tower:FindFirstChild("AnimationController"):LoadAnimation(Tower.Animations.Idle["0"]):Play()
                     end)
-                until Success
+                    if Success then return end
+                end
             end)
         end
         return Tower
     end
+    ConsoleWarn(`AddFakeTower: no {Type} hologram for "{Name}", placing without a preview`)
+end
+
+function TowerHeightOffset(Model)
+    local Root = Model and Model.PrimaryPart
+    local HeightOffset = Root and Root:FindFirstChild("HeightOffset")
+    return HeightOffset and math.abs(HeightOffset.CFrame.Y) or 0
 end
 
 --[[if CheckPlace() then
@@ -183,13 +232,16 @@ return function(self, p1)
     prints(`Place Ready: {Tower} (Wave {Wave})`)
 
     local TowerModel = AddFakeTower(TowerTable.TowerName)
+    local HeightOffset = TowerHeightOffset(TowerModel)
     --TowerModel.PrimaryPart.CFrame = CFrame.new(TowerTable.Position) + Vector3.new(0,math.abs(TowerModel.PrimaryPart.HeightOffset.CFrame.Y),0)
-    TowerModel:PivotTo(CFrame.new(TowerTable.Position + Vector3.new(0,math.abs(TowerModel.PrimaryPart.HeightOffset.CFrame.Y),0)) * TowerTable.Rotation)
-    TowerModel.Name = TempNum
-    DebugTower(TowerModel,Color3.fromRGB(255, 130, 0))
-    TowerTable.TowerModel = TowerModel
-    if UtilitiesTab.flags.TowersPreview then
-        TowerModel.Parent = PreviewFolder
+    if TowerModel then
+        TowerModel:PivotTo(CFrame.new(TowerTable.Position + Vector3.new(0, HeightOffset, 0)) * TowerTable.Rotation)
+        TowerModel.Name = TempNum
+        DebugTower(TowerModel,Color3.fromRGB(255, 130, 0))
+        TowerTable.TowerModel = TowerModel
+        if UtilitiesTab.flags.TowersPreview then
+            TowerModel.Parent = PreviewFolder
+        end
     end
 
     task.spawn(function()
@@ -213,13 +265,17 @@ return function(self, p1)
         repeat
             if type(PlaceCheck) == "string" and PlaceCheck == "You cannot place here!" and not ErrorModel then
                 ErrorModel = AddFakeTower(TowerTable.TowerName,"Error")
-                ErrorModel:PivotTo(CFrame.new(TowerTable.Position + Vector3.new(0,math.abs(TowerModel.PrimaryPart.HeightOffset.CFrame.Y),0)) * TowerTable.Rotation)
-                ErrorModel.Name = TempNum
-                DebugTower(ErrorModel,Color3.new(1, 0, 0))
-                TowerTable.ErrorModel = ErrorModel 
-                TowerModel.Parent = PreviewHolder
-                if UtilitiesTab.flags.TowersPreview then
-                    ErrorModel.Parent = PreviewErrorFolder
+                if ErrorModel then
+                    ErrorModel:PivotTo(CFrame.new(TowerTable.Position + Vector3.new(0, HeightOffset, 0)) * TowerTable.Rotation)
+                    ErrorModel.Name = TempNum
+                    DebugTower(ErrorModel,Color3.new(1, 0, 0))
+                    TowerTable.ErrorModel = ErrorModel
+                    if UtilitiesTab.flags.TowersPreview then
+                        ErrorModel.Parent = PreviewErrorFolder
+                    end
+                end
+                if TowerModel then
+                    TowerModel.Parent = PreviewHolder
                 end
             end
             if CurrentCount ~= StratXLibrary.RestartCount then
@@ -247,10 +303,12 @@ return function(self, p1)
         TowerTable.Target = "First"
         TowerTable.TopPathUpgrade = 0
         TowerTable.BottomPathUpgrade = 0
-        TowerModel.Parent = PreviewHolder
+        if TowerModel then
+            TowerModel.Parent = PreviewHolder
+        end
         TowerTable.DebugTag = DebugTower(TowerTable.Instance,Color3.new(0.35, 0.7, 0.3))
 
-        if not UtilitiesTab.flags.TowersPreview then
+        if TowerTable.DebugTag and not UtilitiesTab.flags.TowersPreview then
             TowerTable.DebugTag.Enabled = false
         end
         if ErrorModel then

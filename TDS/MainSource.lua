@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/"
-local MainVersion = "?v=debuginfo-fix-20261108"
+local MainVersion = "?v=place-preview-fix-20261108"
 
 local OldTime = os.clock()
 
@@ -188,6 +188,10 @@ local SpecialGameMode = {
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+	repeat task.wait() until Players.LocalPlayer
+	LocalPlayer = Players.LocalPlayer
+end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteFunction = if not GameSpoof then ReplicatedStorage:WaitForChild("RemoteFunction") else SpoofEvent
 local RemoteEvent = if not GameSpoof then ReplicatedStorage:WaitForChild("RemoteEvent") else SpoofEvent
@@ -760,7 +764,10 @@ if CheckPlace() then
 		end
 	end)
 	
-	if #Players:GetChildren() > 1 and getgenv().Multiplayer["Enabled"] == false then
+	-- Multiplayer is an optional upstream module; nothing in this repo defines it,
+	-- so indexing it directly killed the whole chunk before the proxy returned.
+	local MultiplayerConfig = getgenv().Multiplayer
+	if #Players:GetChildren() > 1 and type(MultiplayerConfig) == "table" and MultiplayerConfig.Enabled == false then
 		TeleportService:Teleport(3260590327, LocalPlayer)
 	end
 
@@ -1127,7 +1134,18 @@ if not CheckPlace() then
 		LocalPlayer.Character.HumanoidRootPart.CFrame = Part.CFrame + Vector3.new(0, 3.5, 0)
 	end)]]
 
-	game:GetService("ReplicatedStorage"):WaitForChild("Network"):WaitForChild("DailySpin"):WaitForChild("RF:RedeemReward"):InvokeServer()
+	-- Bounded wait: an unbounded WaitForChild on a path this build may not ship
+	-- stalls the library forever and the proxy never gets returned.
+	local Network = ReplicatedStorage:FindFirstChild("Network") or ReplicatedStorage:WaitForChild("Network", 10)
+	local DailySpin = Network and Network:WaitForChild("DailySpin", 5)
+	local RedeemReward = DailySpin and DailySpin:WaitForChild("RF:RedeemReward", 5)
+	if RedeemReward then
+		task.spawn(function()
+			pcall(function()
+				RedeemReward:InvokeServer()
+			end)
+		end)
+	end
 
 	UI.EquipStatus = maintab:DropSection("Troops Loadout Status")
 	UI.TowersStatus = {
@@ -1612,6 +1630,19 @@ function Strat.new()
 end
 prints("Loaded Proxy Strat")
 
+-- One action that throws used to kill its scheduler task and leave
+-- CompatOrderRunning stuck, which froze every later action in the strategy.
+-- Catch it, log it, and give the order slot back so the run continues.
+local function RunScheduledAction(Name, Strat, Index)
+	local Action = Strat[Name].Lists[Index]
+	local Ok, Error = pcall(Functions[Name], Strat, Action)
+	if Ok then return end
+	ConsoleError(`Action {Name} errored: {tostring(Error)}`)
+	if type(Action) == "table" and Action.CompatOrder == StratXLibrary.CompatOrderRunning then
+		StratXLibrary.CompatOrderRunning += 1
+	end
+end
+
 task.spawn(function()
 	local StratsListNum = 1
 	prints("Loading Strat Data")
@@ -1635,7 +1666,7 @@ task.spawn(function()
 						Strat[i].ListNum += 1
 						continue
 					end
-					Functions[i](Strat,Strat[i].Lists[Strat[i].ListNum])
+					RunScheduledAction(i, Strat, Strat[i].ListNum)
 					Strat[i].ListNum += 1
 					task.wait()
 				end
@@ -1680,7 +1711,7 @@ task.spawn(function()
 					Strat[i].ListNum += 1
 					continue
 				end
-				Functions[i](Strat,Strat[i].Lists[Strat[i].ListNum])
+				RunScheduledAction(i, Strat, Strat[i].ListNum)
 				Strat[i].ListNum += 1
 				task.wait()
 			end

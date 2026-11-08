@@ -368,7 +368,7 @@ for i,v in next,GetFilesName("StratLoader") do
         -- Compile through the compatibility transformer so strategies using
         -- `-- [ Wave N ] --` headers and short-form calls work unchanged.
         local source = readfile(strat)
-        local UnifiedMainSource = "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua?v=debuginfo-fix-20261108"
+        local UnifiedMainSource = "https://raw.githubusercontent.com/dben01419-rgb/tds/main/TDS/MainSource.lua?v=place-preview-fix-20261108"
         source = source:gsub("ttps://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/weanyuan/Strategies%-X%-Rebron/[^\"']+TDS/MainSource%.lua", UnifiedMainSource)
