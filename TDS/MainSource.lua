@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
-local MainVersion = "?v=modifier-vote-20261108"
+local MainVersion = "?v=modifier-lobby-20261108"
 
 local OldTime = os.clock()
 
@@ -1379,6 +1379,73 @@ Functions.Option = loadstring(game:HttpGet(MainLink.."TDSTools/Functions/Option.
 Functions.LeaveOn = loadstring(game:HttpGet(MainLink.."TDSTools/Functions/LeaveOn.lua"..MainVersion, true))()
 Functions.SelectLoadout = loadstring(game:HttpGet(MainLink.."TDSTools/Functions/SelectLoadout.lua"..MainVersion, true))()
 
+-- Hardcore modifiers are not applied by the `v2:start` payload -- the server
+-- answers `true` and drops the extra keys.  They are picked in the intermission
+-- lobby instead, so this reports every control the lobby exposes before the
+-- vote is wired to the real one.
+local function DumpModifierSurface(LobbyName, Wanted)
+	if type(Wanted) ~= "table" or not next(Wanted) then
+		return
+	end
+	local WantedLower = {}
+	for _, Name in ipairs(Wanted) do
+		WantedLower[tostring(Name):lower()] = true
+	end
+	local function IsModifierControl(Object)
+		if Object.Name:lower():find("mod", 1, true) then
+			return true
+		end
+		if Object:IsA("TextLabel") or Object:IsA("TextButton") or Object:IsA("TextBox") then
+			return WantedLower[tostring(Object.Text):lower()] == true
+		end
+		return false
+	end
+	local function Describe(Object)
+		local Text = ""
+		if Object:IsA("TextLabel") or Object:IsA("TextButton") or Object:IsA("TextBox") then
+			Text = ` text="{Object.Text}"`
+		end
+		return `{Object.ClassName} {Object:GetFullName()}{Text}`
+	end
+	prints("=== MODIFIER SURFACE ===")
+	local Lobby = Workspace:FindFirstChild(LobbyName)
+	if Lobby then
+		local Children = {}
+		for _, Child in ipairs(Lobby:GetChildren()) do
+			table.insert(Children, `{Child.Name}[{Child.ClassName}]`)
+		end
+		prints(`Lobby {LobbyName}: {table.concat(Children, ", ")}`)
+		for _, Object in ipairs(Lobby:GetDescendants()) do
+			if IsModifierControl(Object) then
+				prints(`  LOBBY {Describe(Object)}`)
+			end
+		end
+	else
+		prints(`Lobby {LobbyName} not present`)
+	end
+	for _, Gui in ipairs(LocalPlayer.PlayerGui:GetChildren()) do
+		if Gui:IsA("ScreenGui") then
+			local Hits = {}
+			for _, Object in ipairs(Gui:GetDescendants()) do
+				if IsModifierControl(Object) then
+					table.insert(Hits, `{Object.ClassName}:{Object:GetFullName()}`)
+				end
+			end
+			if #Hits > 0 then
+				prints(`GUI {Gui.Name}: {table.concat(Hits, " | ")}`)
+			end
+		end
+	end
+	local Remotes = {}
+	for _, Child in ipairs(ReplicatedStorage:GetDescendants()) do
+		if Child:IsA("RemoteFunction") or Child:IsA("RemoteEvent") or Child:IsA("UnreliableRemoteEvent") then
+			table.insert(Remotes, `{Child:GetFullName()}`)
+		end
+	end
+	prints(`Remotes: {table.concat(Remotes, ", ")}`)
+	prints("=== MODIFIER SURFACE END ===")
+end
+
 Functions.MatchMaking = function()
 	local MapProps, Index, VetoUsedOnce, CheckingForPrivateIntermission
     local RSMap = ReplicatedStorage:WaitForChild("State"):WaitForChild("Map") --map's Name
@@ -1482,6 +1549,7 @@ Functions.MatchMaking = function()
       		end
       	end)
     end
+	DumpModifierSurface(Lobby, MapProps.Modifiers)
 	RemoteFunction:InvokeServer("LobbyVoting", "Override", MapProps.Map)
 	RemoteEvent:FireServer("LobbyVoting", "Vote", MapProps.Map, LocalPlayer.Character.HumanoidRootPart.Position)
 	RemoteEvent:FireServer("LobbyVoting","Ready")
