@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
-local MainVersion = "?v=modifier-lobby-20261108"
+local MainVersion = "?v=modifier-vote-real-20261108"
 
 local OldTime = os.clock()
 
@@ -1446,6 +1446,46 @@ local function DumpModifierSurface(LobbyName, Wanted)
 	prints("=== MODIFIER SURFACE END ===")
 end
 
+local function ResolvePath(Root, ...)
+	local Node = Root
+	for _, Name in ipairs({ ... }) do
+		if not Node then
+			return nil
+		end
+		Node = Node:FindFirstChild(Name)
+	end
+	return Node
+end
+
+-- Hardcore modifiers are applied by a lobby vote, not by the `v2:start`
+-- payload -- the server answers `true` and drops the extra keys.  The game's
+-- own client sends `{ [ModifierName] = true }` to this remote when the
+-- "Vote For Modifiers" button is pressed.
+local function VoteModifiers(Wanted, LobbyName)
+	if type(Wanted) ~= "table" or not next(Wanted) then
+		return
+	end
+	local ModifierRemote = ResolvePath(ReplicatedStorage, "Network", "Modifiers", "RF:BulkVoteModifiers")
+	if not ModifierRemote then
+		prints("Modifier Vote: Network.Modifiers.RF:BulkVoteModifiers not found")
+		DumpModifierSurface(LobbyName, Wanted)
+		return
+	end
+	local Votes = {}
+	for _, Name in ipairs(Wanted) do
+		Votes[tostring(Name)] = true
+	end
+	local Ok, Result = pcall(function()
+		return ModifierRemote:InvokeServer(Votes)
+	end)
+	prints(`Modifier Vote Sent: {table.concat(Wanted, ", ")} -> ok={tostring(Ok)} result={tostring(Result)}`)
+	task.wait(1)
+	local SelectedLabel = ResolvePath(LocalPlayer.PlayerGui, "ReactGameGameModifiers", "Modifiers", "background", "selectedModifiers", "title")
+	if SelectedLabel then
+		prints(`Modifier Vote State: {SelectedLabel.Text}`)
+	end
+end
+
 Functions.MatchMaking = function()
 	local MapProps, Index, VetoUsedOnce, CheckingForPrivateIntermission
     local RSMap = ReplicatedStorage:WaitForChild("State"):WaitForChild("Map") --map's Name
@@ -1549,7 +1589,7 @@ Functions.MatchMaking = function()
       		end
       	end)
     end
-	DumpModifierSurface(Lobby, MapProps.Modifiers)
+	VoteModifiers(MapProps.Modifiers, Lobby)
 	RemoteFunction:InvokeServer("LobbyVoting", "Override", MapProps.Map)
 	RemoteEvent:FireServer("LobbyVoting", "Vote", MapProps.Map, LocalPlayer.Character.HumanoidRootPart.Position)
 	RemoteEvent:FireServer("LobbyVoting","Ready")
