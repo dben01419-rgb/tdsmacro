@@ -19,7 +19,7 @@ local Items = {
 
 local LoadLocal = false
 local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
-local MainVersion = "?v=modifier-vote-real-20261108"
+local MainVersion = "?v=modifier-vote-2-20261108"
 
 local OldTime = os.clock()
 
@@ -1465,8 +1465,13 @@ local function VoteModifiers(Wanted, LobbyName)
 	if type(Wanted) ~= "table" or not next(Wanted) then
 		return
 	end
-	local ModifierRemote = ResolvePath(ReplicatedStorage, "Network", "Modifiers", "RF:BulkVoteModifiers")
-	if not ModifierRemote then
+	local ModifierRemote
+	local Resolved = pcall(function()
+		ModifierRemote = ReplicatedStorage:WaitForChild("Network", 15)
+			:WaitForChild("Modifiers", 15)
+			:WaitForChild("RF:BulkVoteModifiers", 15)
+	end)
+	if not Resolved or not ModifierRemote then
 		prints("Modifier Vote: Network.Modifiers.RF:BulkVoteModifiers not found")
 		DumpModifierSurface(LobbyName, Wanted)
 		return
@@ -1475,14 +1480,27 @@ local function VoteModifiers(Wanted, LobbyName)
 	for _, Name in ipairs(Wanted) do
 		Votes[tostring(Name)] = true
 	end
-	local Ok, Result = pcall(function()
-		return ModifierRemote:InvokeServer(Votes)
-	end)
-	prints(`Modifier Vote Sent: {table.concat(Wanted, ", ")} -> ok={tostring(Ok)} result={tostring(Result)}`)
-	task.wait(1)
-	local SelectedLabel = ResolvePath(LocalPlayer.PlayerGui, "ReactGameGameModifiers", "Modifiers", "background", "selectedModifiers", "title")
-	if SelectedLabel then
-		prints(`Modifier Vote State: {SelectedLabel.Text}`)
+	prints(`Modifier Vote Sending: {table.concat(Wanted, ", ")}`)
+	local Ok, Result
+	for Attempt = 1, 3 do
+		Ok, Result = pcall(function()
+			return ModifierRemote:InvokeServer(Votes)
+		end)
+		prints(`  attempt {Attempt} -> ok={tostring(Ok)} result={tostring(Result)}`)
+		if Ok and Result ~= false then
+			break
+		end
+		task.wait(1)
+	end
+	for _ = 1, 5 do
+		local SelectedLabel = ResolvePath(LocalPlayer.PlayerGui, "ReactGameGameModifiers", "Modifiers", "background", "selectedModifiers", "title")
+		if SelectedLabel then
+			prints(`Modifier Vote State: {SelectedLabel.Text}`)
+			if not SelectedLabel.Text:find("(0/", 1, true) then
+				break
+			end
+		end
+		task.wait(1)
 	end
 end
 
