@@ -359,7 +359,21 @@ end
 local LoadStrat = {}
 local ErrorFile = {}
 appendlog("Loaded File:")
-local StrategyCompat = loadstring(game:HttpGet("https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/TDSTools/StrategyCompat.lua?v=9e99499", true))()
+-- raw.githubusercontent ignores query strings for cache keys, so `?v=` never
+-- busted anything -- that is what served a stale library after the last push.
+-- Resolve the current main commit and pin it into the path instead.
+local RepoRoot = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/"
+local Revision = "main"
+pcall(function()
+    local Body = game:HttpGet("https://api.github.com/repos/dben01419-rgb/tdsmacro/commits/main")
+    local Sha = Body:match('"sha"%s*:%s*"(%x+)"')
+    if Sha then
+        Revision = Sha
+    end
+end)
+getgenv().TDSRevision = Revision
+appendlog("Main Revision: " .. Revision)
+local StrategyCompat = loadstring(game:HttpGet(RepoRoot .. Revision .. "/TDS/TDSTools/StrategyCompat.lua", true))()
 for i,v in next,GetFilesName("StratLoader") do
     local strat = GetFilePath("StratLoader",v)
     if strat and isfile(strat) then
@@ -368,8 +382,7 @@ for i,v in next,GetFilesName("StratLoader") do
         -- Compile through the compatibility transformer so strategies using
         -- `-- [ Wave N ] --` headers and short-form calls work unchanged.
         local source = readfile(strat)
-        local UnifiedMainSource = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/MainSource.lua?v="
-            .. tostring(os.time()) .. tostring(math.random(100000, 999999))
+        local UnifiedMainSource = RepoRoot .. Revision .. "/TDS/MainSource.lua"
         source = source:gsub("ttps://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/dben01419%-rgb/tds/main/TDS/MainSource%.lua", UnifiedMainSource)
         source = source:gsub("https://raw%.githubusercontent%.com/weanyuan/Strategies%-X%-Rebron/[^\"']+TDS/MainSource%.lua", UnifiedMainSource)

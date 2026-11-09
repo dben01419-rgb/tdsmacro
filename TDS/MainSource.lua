@@ -18,7 +18,12 @@ local Items = {
 }
 
 local LoadLocal = false
-local MainLink = LoadLocal and "" or "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/main/TDS/"
+local RepoRoot = "https://raw.githubusercontent.com/dben01419-rgb/tdsmacro/"
+-- raw.githubusercontent ignores query strings when it keys the CDN cache, so
+-- `?v=` never busted anything.  Pinning the commit into the path gives each
+-- release its own immutable cache entry -- the only form that actually refreshes.
+local Revision = (type(getgenv) == "function" and getgenv().TDSRevision) or "main"
+local MainLink = LoadLocal and "" or RepoRoot .. Revision .. "/TDS/"
 local MainVersion = "?v=modifier-vote-2-20261108"
 
 local OldTime = os.clock()
